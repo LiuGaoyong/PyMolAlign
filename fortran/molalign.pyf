@@ -1,0 +1,92 @@
+!    -*- f90 -*-
+! Note: the context of this file is case sensitive.
+
+python module molalign ! in 
+    interface  ! in :molalign
+        module flags ! in :molalign:flags.f90
+            logical :: iter_flag
+            logical :: test_flag
+            logical :: bias_flag
+            logical :: live_flag
+            logical :: trial_flag
+            logical :: stats_flag
+        end module flags
+        module kinds ! in :molalign:kinds.f90
+            integer, parameter,optional :: sp=4
+            integer, parameter,optional :: dp=8
+            integer, parameter,optional,depend(dp) :: wp=8
+            integer, parameter,optional :: wl=32
+            integer, parameter,optional :: ll=256
+        end module kinds
+        module bounds ! in :molalign:bounds.f90
+            integer :: maxrec
+            integer :: maxcount
+            integer :: maxtrials
+            integer :: maxcoord
+        end module bounds
+        module biasing ! in :molalign:biasing.f90
+            use kinds
+            use flags
+            use sorting
+            real(kind=8) :: bias_tol
+            real(kind=8) :: bias_scale
+            subroutine setcrossbias(natom,nblk,blksz,coords0,coords1,prunemask) ! in :molalign:biasing.f90:biasing
+                integer intent(in) :: natom
+                integer intent(in) :: nblk
+                integer dimension(:),intent(in) :: blksz
+                real(kind=8) dimension(:,:),intent(in) :: coords0
+                real(kind=8) dimension(:,:),intent(in) :: coords1
+                logical dimension(:,:),intent(out) :: prunemask
+            end subroutine setcrossbias
+        end module biasing
+        module library ! in :molalign:library.f90
+            use stdio
+            use kinds
+            use bounds
+            use random
+            use biasing
+            use permutation
+            use sorting
+            use assorting
+            use rotation
+            use translation
+            use alignment
+            use assignment
+            subroutine assign_atoms(natom0,znums0,types0,weights0,incoords0,natom1,znums1,types1,weights1,incoords1,permlist,countlist,nrec,error) ! in :molalign:library.f90:library
+                integer intent(in) :: natom0
+                integer dimension(:),intent(in) :: znums0
+                integer dimension(:),intent(in) :: types0
+                real(kind=8) dimension(:),intent(in) :: weights0
+                real(kind=8) dimension(:,:),intent(in) :: incoords0
+                integer intent(in) :: natom1
+                integer dimension(:),intent(in) :: znums1
+                integer dimension(:),intent(in) :: types1
+                real(kind=8) dimension(:),intent(in) :: weights1
+                real(kind=8) dimension(:,:),intent(in) :: incoords1
+                integer dimension(:,:),intent(inout) :: permlist
+                integer dimension(:),intent(inout) :: countlist
+                integer intent(out) :: nrec
+                integer intent(out) :: error
+            end subroutine assign_atoms
+            subroutine align_atoms(natom0,znums0,types0,weights0,coords0,natom1,znums1,types1,weights1,coords1,travec,rotmat,error) ! in :molalign:library.f90:library
+                integer intent(in) :: natom0
+                integer dimension(:),intent(in) :: znums0
+                integer dimension(:),intent(in) :: types0
+                real(kind=8) dimension(:),intent(in) :: weights0
+                real(kind=8) dimension(:,:),intent(in) :: coords0
+                integer intent(in) :: natom1
+                integer dimension(:),intent(in) :: znums1
+                integer dimension(:),intent(in) :: types1
+                real(kind=8) dimension(:),intent(in) :: weights1
+                real(kind=8) dimension(:,:),intent(in) :: coords1
+                real(kind=8) dimension(3),intent(out) :: travec
+                real(kind=8) dimension(3,3),intent(out) :: rotmat
+                integer intent(out) :: error
+            end subroutine align_atoms
+        end module library
+    end interface 
+end python module molalign
+
+! This file was auto-generated with f2py (version:2.0.2).
+! See:
+! https://web.archive.org/web/20140822061353/http://cens.ioc.ee/projects/f2py2e
