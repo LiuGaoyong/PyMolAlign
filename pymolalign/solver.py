@@ -60,13 +60,6 @@ class NearCongruenceSolver:
         return points
 
     @classmethod
-    def _solve_translation(cls, A: np.ndarray, B: np.ndarray) -> np.ndarray:
-        """Solves the translation vector."""
-        A = cls._check_coordinates(A)
-        B = cls._check_coordinates(B)
-        return A.mean(axis=0) - B.mean(axis=0)
-
-    @classmethod
     def _compute_euclidean_matrix(
         cls,
         A: np.ndarray,
@@ -193,9 +186,10 @@ class NearCongruenceSolver:
             Solution containing rotation, permutation, and transition.
             The second float is the final MSD value.
         """
-        # t = self._solve_translation(A, B)
-        # B = B + t  # translate B near to A
-        t = np.zeros(3)
+        CENTER_A = A.mean(0)
+        CENTER_B = B.mean(0)
+        t = CENTER_A - CENTER_B  # translation vector
+        A, B = A - CENTER_A, B - CENTER_B
 
         msd = best_msd = float("inf")
         P = best_P = np.eye(A.shape[0])  # identity permutation
