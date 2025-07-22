@@ -1,0 +1,77 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pymolalign"
+version = "v0.0.1alpha0"
+description = "A Python Library to Align Rigid Molecules and Clusters."
+readme = "README.md"
+authors = [{ name = "Liu Gaoyong", email = "liugaoyong_88@163.com" }]
+license = { file = "LICENSE" }
+classifiers = [
+    'Development Status :: 5 - Production/Stable',
+    'Environment :: Console',
+    'Environment :: Other Environment',
+    'Intended Audience :: Education',
+    'Intended Audience :: Science/Research',
+    'License :: OSI Approved :: GNU General Public License (GPL)',
+    'Natural Language :: English',
+    'Operating System :: MacOS :: MacOS X',
+    'Operating System :: Microsoft :: Windows',
+    'Operating System :: POSIX :: Linux',
+    'Programming Language :: Python',
+    'Topic :: Scientific/Engineering :: Chemistry',
+    'Topic :: Software Development :: Libraries',
+]
+requires-python = ">=3.9, <=3.13"
+dependencies = ["ase", "scipy", "lap", "typing-extensions"]
+[dependency-groups]
+dev = ["ruff>=0.11.2", "pytest>=8.3.5"]
+[project.scripts]
+xtb = "pymolalign.cli:main"
+[project.urls]
+homepage = "https://github.com/LiuGaoyong/PyMolAlign"
+repository = "https://github.com/LiuGaoyong/PyMolAlign"
+
+# setuptools config
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["pymolalign"]
+namespaces = true
+
+# uv config
+[tool.uv]
+package = true
+[[tool.uv.index]]
+url = "https://mirror.nju.edu.cn/pypi/web/simple"
+default = true
+
+# pytest config
+[tool.pytest.ini_options]
+addopts = '--maxfail=1 -rf' # exit after 1 failures, report fail info
+testpaths = ["tests"]
+filterwarnings = [
+    "error", # All other warnings are transformed into errors.
+    # ignore the following warnings that matching a regex
+    'ignore:invalid escape sequence:SyntaxWarning',
+    'ignore:module \Ssre_parse\S is deprecated:DeprecationWarning',
+    'ignore:module \Ssre_constants\S is deprecated:DeprecationWarning',
+    'ignore:Please use atoms.calc:DeprecationWarning',
+    'ignore::pytest.PytestUnraisableExceptionWarning',
+    'ignore::pytest.PytestDeprecationWarning',
+    'ignore:distutils:DeprecationWarning',
+    'ignore:joblib \S use of fork() may lead to deadlocks in the child.:DeprecationWarning',
+    'ignore::ResourceWarning',
+    'ignore::UserWarning',
+    'ignore:\Storch\S:FutureWarning',
+]
+
+# ruff config
+[tool.ruff]
+line-length = 80
+indent-width = 4
+select = ["F", "E", "W", "UP", "D"]
+ignore = ["D100", "D103", "D104", "F722", 'UP038']
+[tool.ruff.pydocstyle]
+convention = "google"
