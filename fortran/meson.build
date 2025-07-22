@@ -21,3 +21,10 @@ srcs += files(
     'assignment.f90',
     'library.f90',
 )
+f2pysrcs += files(
+    'kinds.f90',
+    'flags.f90',
+    'bounds.f90',
+    'biasing.f90',
+    'library.f90',
+)
