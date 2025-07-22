@@ -1,0 +1,242 @@
+! MolAlignLib
+! Copyright (C) 2022 José M. Vásquez
+
+! This program is free software: you can redistribute it and/or modify
+! it under the terms of the GNU General Public License as published by
+! the Free Software Foundation, either version 3 of the License, or
+! (at your option) any later version.
+
+! This program is distributed in the hope that it will be useful,
+! but WITHOUT ANY WARRANTY; without even the implied warranty of
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+! GNU General Public License for more details.
+
+! You should have received a copy of the GNU General Public License
+! along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+module assignment
+use kinds
+use flags
+use bounds
+use random
+use strutils
+use lap_sparse
+use translation
+use alignment
+use rotation
+use biasing
+use printing
+
+implicit none
+
+private
+public optimize_assignment
+
+contains
+
+subroutine optimize_assignment( &
+   natom, &
+   nblk, &
+   blksz, &
+   blkwt, &
+   coords0, &
+   coords1, &
+   prunemask, &
+   permlist, &
+   countlist, &
+   nrec)
+
+   integer, intent(in) :: natom, nblk
+   integer, dimension(:), intent(in) :: blksz
+   real(wp), dimension(:), intent(in) :: blkwt
+   real(wp), dimension(:, :), intent(in) :: coords0, coords1
+   logical, dimension(:, :), intent(in) :: prunemask
+   integer, intent(out) :: permlist(:, :)
+   integer, intent(out) :: countlist(:)
+   integer, intent(out) :: nrec
+
+   integer :: h, offset
+   logical visited, overflow
+   integer irec, ntrial, nstep, steps
+   integer, dimension(natom) :: atomperm, auxmap
+   real(wp) :: dist, totalrot
+   real(wp), dimension(4) :: rotquat, prodquat
+   real(wp), dimension(maxrec) :: distrec, avgsteps, avgtotalrot, avgrealrot
+   real(wp) :: workcoords1(3, natom)
+   real(wp) :: weights(natom)
+
+   ! Distribute weights to atoms
+
+   offset = 0
+   do h = 1, nblk
+      weights(offset+1:offset+blksz(h)) = blkwt(h)
+      offset = offset + blksz(h)
+   end do
+
+   ! Print header and initial stats
+
+   if (stats_flag .and. live_flag) then
+      write (error_unit, '(a)', advance='no') achar(27) // '[1H' // achar(27) // '[J'
+      call print_header()
+   end if
+
+   ! Initialize loop variables
+
+   nrec = 0
+   nstep = 0
+   ntrial = 0
+   countlist(1) = 0
+   overflow = .false.
+
+   ! Loop for map searching
+
+   do while (countlist(1) < maxcount .and. (.not. trial_flag .or. ntrial < maxtrials))
+
+      ntrial = ntrial + 1
+
+   ! Work with a copy of coords1
+
+      workcoords1 = coords1
+
+   ! Aply a random rotation to workcoords1
+
+      call rotate(natom, workcoords1, genrotquat(rand3()))
+
+   ! Minimize the euclidean distance
+
+      call minatomperm(natom, coords0, workcoords1, nblk, blksz, blkwt, prunemask, atomperm, dist)
+      rotquat = leastrotquat(natom, weights, coords0, workcoords1, atomperm)
+      prodquat = rotquat
+      totalrot = rotangle(rotquat)
+      call rotate(natom, workcoords1, rotquat)
+
+      steps = 1
+
+      do while (iter_flag)
+         call minatomperm(natom, coords0, workcoords1, nblk, blksz, blkwt, prunemask, auxmap, dist)
+         if (all(auxmap == atomperm)) exit
+         rotquat = leastrotquat(natom, weights, coords0, workcoords1, auxmap)
+         prodquat = quatmul(rotquat, prodquat)
+         call rotate(natom, workcoords1, rotquat)
+         totalrot = totalrot + rotangle(rotquat)
+         atomperm = auxmap
+         steps = steps + 1
+      end do
+
+      nstep = nstep + steps
+
+      dist = squaredist(natom, weights, coords0, workcoords1, atomperm)
+
+      ! Check for new best permlist
+
+      visited = .false.
+
+      do irec = 1, nrec
+         if (all(atomperm == permlist(:, irec))) then
+            countlist(irec) = countlist(irec) + 1
+            avgsteps(irec) = avgsteps(irec) + (steps - avgsteps(irec))/countlist(irec)
+            avgrealrot(irec) = avgrealrot(irec) + (rotangle(prodquat) - avgrealrot(irec))/countlist(irec)
+            avgtotalrot(irec) = avgtotalrot(irec) + (totalrot - avgtotalrot(irec))/countlist(irec)
+            if (stats_flag .and. live_flag) then
+               write (error_unit, '(a)', advance='no') achar(27) // '[' // intstr(irec + 2) // 'H'
+               call print_body(irec, countlist(irec), avgsteps(irec), avgtotalrot(irec), &
+                  avgrealrot(irec), distrec(irec)/sum(weights))
+            end if
+            visited = .true.
+            exit
+         end if
+      end do
+
+      if (.not. visited) then
+         if (nrec < maxrec) then
+            nrec = nrec + 1
+         else
+            overflow = .true.
+            if (dist > distrec(nrec)) cycle
+         end if
+         do irec = nrec, 2, -1
+            if (dist > distrec(irec - 1)) exit
+            permlist(:, irec) = permlist(:, irec - 1)
+            countlist(irec) = countlist(irec - 1)
+            distrec(irec) = distrec(irec - 1)
+            avgsteps(irec) = avgsteps(irec - 1)
+            avgrealrot(irec) = avgrealrot(irec - 1)
+            avgtotalrot(irec) = avgtotalrot(irec - 1)
+            if (stats_flag .and. live_flag) then
+               write (error_unit, '(a)', advance='no') achar(27) // '[' // intstr(irec + 2) // 'H'
+               call print_body(irec, countlist(irec), avgsteps(irec), avgtotalrot(irec), &
+                  avgrealrot(irec), distrec(irec)/sum(weights))
+            end if
+         end do
+         permlist(:, irec) = atomperm
+         countlist(irec) = 1
+         distrec(irec) = dist
+         avgsteps(irec) = steps
+         avgrealrot(irec) = rotangle(prodquat)
+         avgtotalrot(irec) = totalrot
+         if (stats_flag .and. live_flag) then
+            write (error_unit, '(a)', advance='no') achar(27) // '[' // intstr(irec + 2) // 'H'
+            call print_body(irec, countlist(irec), avgsteps(irec), avgtotalrot(irec), &
+               avgrealrot(irec), distrec(irec)/sum(weights))
+         end if
+      end if
+
+      if (stats_flag .and. live_flag) then
+         write (error_unit, '(a)', advance='no') achar(27) // '[' // intstr(nrec + 3) // 'H'
+         call print_footer()
+      end if
+
+   end do
+
+   if (stats_flag .and. .not. live_flag) then
+      call print_header()
+      do irec = 1, nrec
+         call print_body(irec, countlist(irec), avgsteps(irec), avgtotalrot(irec), &
+            avgrealrot(irec), distrec(irec)/sum(weights))
+      end do
+      call print_footer()
+   end if
+
+   if (stats_flag) then
+      call print_stats(overflow, maxrec, nrec, ntrial, nstep)
+   end if
+
+end subroutine
+
+! Find best correspondence between points sets with fixed orientation
+subroutine minatomperm(natom, coords0, coords1, nblk, blksz, blkwt, prunemask, atomperm, totdist)
+
+! nblk: Number of block atoms
+! blksz: Number of atoms in each block
+! atomperm: Map between correspondent points in the adjmat
+! offset: First element of current block
+
+   integer, intent(in) :: natom, nblk
+   integer, dimension(:), intent(in) :: blksz
+   real(wp), dimension(:), intent(in) :: blkwt
+   real(wp), dimension(:, :), intent(in) :: coords0
+   real(wp), dimension(:, :), intent(in) :: coords1
+   logical, dimension(:, :), intent(in) :: prunemask
+   integer, dimension(:), intent(out) :: atomperm
+   real(wp), intent(out) :: totdist
+
+   integer :: h, offset
+   integer, dimension(natom) :: perm
+   real(wp) :: dist
+
+   ! Fill distance matrix for each block
+
+   offset = 0
+   totdist = 0
+
+   do h = 1, nblk
+      call minperm(blksz(h), coords0(:, offset+1:offset+blksz(h)), coords1(:, offset+1:offset+blksz(h)), &
+         prunemask(offset+1:offset+blksz(h), offset+1:offset+blksz(h)), perm, dist)
+      atomperm(offset+1:offset+blksz(h)) = perm(:blksz(h)) + offset
+      totdist = totdist + blkwt(h)*dist
+      offset = offset + blksz(h)
+   end do
+
+end subroutine
+
+end module
