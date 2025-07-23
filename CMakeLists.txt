@@ -5,13 +5,11 @@ project(MolAlign
   LANGUAGES C Fortran
 )
 
-# Basic Library
 add_subdirectory("fortran")
 add_library(MolAlignLib STATIC ${srcs})
 # two varible: f2pysrcs & srcs
 
 
-# Start to Setup F2PY
 find_package(Python REQUIRED COMPONENTS Interpreter Development.Module NumPy)
 execute_process(
   COMMAND "${Python_EXECUTABLE}"
@@ -36,13 +34,13 @@ python_add_library(${CMAKE_PROJECT_NAME} MODULE
                   "${f2pysrcs}" WITH_SOABI
 )
 
-target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC
-                           ${F2PY_INCLUDE_DIR}
-                          )
+# target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC
+#                            ${F2PY_INCLUDE_DIR}
+#                           )
 
-target_link_libraries(${CMAKE_PROJECT_NAME} PUBLIC
-                      Python::NumPy
-                      MolAlignLib
-)
+# target_link_libraries(${CMAKE_PROJECT_NAME} PUBLIC
+#                       Python::NumPy
+#                       MolAlignLib
+# )
 
-install(TARGETS ${CMAKE_PROJECT_NAME} DESTINATION pi)
+# install(TARGETS ${CMAKE_PROJECT_NAME} DESTINATION pi)
