@@ -29,8 +29,8 @@ classifiers = [
     'Topic :: Scientific/Engineering :: Chemistry',
     'Topic :: Software Development :: Libraries',
 ]
-requires-python = ">=3.9"
-dependencies = ["ase", "numpy", "typing_extensions"]
+requires-python = ">=3.9, <=3.13"
+dependencies = ["ase", "pydantic>=2", "scipy", "typing-extensions"]
 [dependency-groups]
 dev = ["pytest"]
 
