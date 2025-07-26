@@ -21,16 +21,16 @@ list(APPEND srcs
     "${dir}/rotation.f90"
     "${dir}/alignment.f90"
     "${dir}/assignment.f90"
-    # "${dir}/library.f90"
+    "${dir}/library.f90"
 )
 set(srcs ${srcs} PARENT_SCOPE)
 
 
 list(APPEND f2pysrcs
-    # "${dir}/kinds.f90"
-    # "${dir}/flags.f90"
-    # "${dir}/bounds.f90"
-    # "${dir}/biasing.f90"
+    "${dir}/kinds.f90"
+    "${dir}/flags.f90"
+    "${dir}/bounds.f90"
+    "${dir}/biasing.f90"
     "${dir}/library.f90"
 )
 set(f2pysrcs ${f2pysrcs} PARENT_SCOPE)

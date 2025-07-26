@@ -8,34 +8,27 @@ project(
   LANGUAGES C Fortran
 )
 
-
+########################################################################
+################      External Fortran Library        ##################
+########################################################################
+set(srcs)
+set(flib "molalign_fortran")
 add_subdirectory("fortran")
-add_library(MolAlignLib STATIC ${srcs})
-set(fortran_src_file ${f2pysrcs})
+add_library(${flib} STATIC ${srcs})
 
-
-# Python, Numpy & F2PY headers
-find_package(
-  Python REQUIRED
-  COMPONENTS Interpreter
-  Development.Module NumPy
-)
+########################################################################
+################        Numpy F2PY Library          ####################
+########################################################################
+# Python, Numpy & F2PY headers, fortranobject dependencies
+find_package(Python REQUIRED COMPONENTS Interpreter Development.Module NumPy)
 include(UseF2Py)
-
-
+# Create the F2Py `numpyobject` library.
 f2py_object_library(f2py_object OBJECT)
-f2py_generate_module(
-  ${CMAKE_PROJECT_NAME}
-  ${fortran_src_file}
-  OUTPUT_VARIABLE f2py_files
-)
-python_add_library(
-  ${CMAKE_PROJECT_NAME} MODULE
-  ${f2py_files}
-  ${fortran_src_file} WITH_SOABI)
-target_link_libraries(
-  ${CMAKE_PROJECT_NAME} PRIVATE
-  f2py_object MolAlignLib)
-install(
-  TARGETS ${CMAKE_PROJECT_NAME}
-  DESTINATION pymolalign)
+
+set(fortran_src_file ${f2pysrcs})
+set(py_module_name "_molalignlib")
+f2py_generate_module("${py_module_name}" "${fortran_src_file}" OUTPUT_VARIABLE f_files)
+MESSAGE(STATUS "This var key = ${f_files}.")
+python_add_library("${py_module_name}" MODULE "${f_files}" "${fortran_src_file}" WITH_SOABI)
+# target_link_libraries("${py_module_name}" PRIVATE f2py_object "${fortran_src_file}" ${flib})
+# install(TARGETS ${py_module_name} DESTINATION pymolalign)
